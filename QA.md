@@ -98,8 +98,8 @@ CREATE OR REPLACE VIEW allsessions_clean AS (
 	date,
 	visitid,
 	type,
-	productrefundamount,
-	productquantity,
+	--productrefundamount,
+	--productquantity,
 	(productprice::real / 1000000) AS productprice,
 	productprice AS productprice_original,  -- NEW COLUMN
 	(productrevenue::real / 1000000) as productrevenue,
@@ -109,8 +109,8 @@ CREATE OR REPLACE VIEW allsessions_clean AS (
 	v2productcategory,
 	productvariant,
 	currencycode,
-	itemquantity,
-	itemrevenue,
+	--itemquantity,
+	--itemrevenue,
     (transactionrevenue::real / 1000000) as transactionrevenue,
 	transactionrevenue as transactionrevenue_original,  -- NEW COLUMN
 	transactionid,
@@ -175,7 +175,7 @@ ON oc.column_name = nc.column_name
 WHERE oc.column_name IS NULL OR nc.column_name IS NULL
 
 
---5. Confirm the same order of columns from allsessions and allsessions_clean
+--5. Confirm the same order of originally-present columns from allsessions and allsessions_clean
 -- The below should return NULL SET
 WITH original_columns AS (
 	SELECT ordinal_position, column_name,
@@ -197,7 +197,7 @@ SELECT *
 FROM original_columns oc
 FULL OUTER JOIN new_columns nc
 ON oc.column_name = nc.column_name
-WHERE oc.row_num != nc.row_num
+WHERE oc.row_num != nc.row_num OR oc.column_name != nc.column_name
 ```
 
 
@@ -212,7 +212,7 @@ CREATE OR REPLACE VIEW analytics_clean AS (
 	visitstarttime,
 	date,
 	fullvisitorid,
-	userid,
+	--userid,
 	channelgrouping,
 	socialengagementtype,
 	unitssold,
@@ -266,7 +266,7 @@ FULL OUTER JOIN new_columns nc
 ON oc.column_name = nc.column_name
 WHERE oc.column_name IS NULL OR nc.column_name IS NULL
 
---4. Confirm the same order of columns from analytics and analytics_clean
+--4. Confirm the same order of originally-present columns from analytics and analytics_clean
 -- The below should return NULL SET
 WITH original_columns AS (
 	SELECT ordinal_position, column_name,
@@ -288,7 +288,7 @@ SELECT *
 FROM original_columns oc
 FULL OUTER JOIN new_columns nc
 ON oc.column_name = nc.column_name
-WHERE oc.row_num != nc.row_num
+WHERE oc.row_num != nc.row_num OR oc.column_name != nc.column_name
 ```
 
 #### Related to creating products_clean:
@@ -340,7 +340,7 @@ FULL OUTER JOIN new_columns nc
 ON oc.column_name = nc.column_name
 WHERE oc.column_name IS NULL OR nc.column_name IS NULL
 
---3. Confirm the same order of columns from products and productss_clean
+--3. Confirm the same order of originally-present columns from products and productss_clean
 -- The below should return NULL SET
 WITH original_columns AS (
 	SELECT ordinal_position, column_name,
@@ -362,7 +362,7 @@ SELECT *
 FROM original_columns oc
 FULL OUTER JOIN new_columns nc
 ON oc.column_name = nc.column_name
-WHERE oc.row_num != nc.row_num
+WHERE oc.row_num != nc.row_num OR oc.column_name != nc.column_name
 ```
 
 

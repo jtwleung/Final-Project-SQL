@@ -4,6 +4,8 @@
 
 ### When doing preliminary examination of the data to prepare for import, and analysis using SQL on the tables after import, I found the following potential issues:
 
+(Note to reader: Please render this .md file in Visual Studio Code preview in order to see the color coding within the table.  GitHub does not support rendering 'font color="red"' tags.)
+
 | Item # | Table Name | Column Name | Issue and Comments |
 | ------ | ---------- | ----------- | ------------------ |
 | 1 |allsessions | country | - 24 entries of '(not set)' = 0.15% occurence<br>- small percentage is negligible, so rows could be dropped if country distribution specifically is being examined, otherwise keep this column<br>- not possible to interpolate country value from city value due to missing city value data in those rows |
@@ -39,7 +41,9 @@
 
 ## QUERIES USED TO ACTION ITEMS IDENTIFIED ABOVE
 
-Note:  I did not action all the items identified above (as indicated in the table above, some were highlighted simply as areas to exercise "<b><font color="red">caution</font></b>" over when running analyses).  However, below are the queries used to address the items from table above which were deemed issues to be addressed by data cleaning:
+Note:  I did not action all the items identified above (as indicated in the table above, some were highlighted simply as areas to exercise "<b><font color="red">caution</font></b>" over when running analyses).  However, below are the queries used to address the items from table above which were deemed issues to be addressed by data cleaning.
+
+\*** Please note that the complete SQL used to create views for allsessions_clean, analytics_clean and products_clean, are listed at the beginning of the QA.md file.  The below is simply individualized SQL for each Item in the table above:
 
 **Item #1**:
 ```SQL
