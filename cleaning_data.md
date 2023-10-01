@@ -65,7 +65,7 @@ CREATE TEMP TABLE allsessions_clean AS (
 CREATE TEMP TABLE allsessions_clean AS (
 	SELECT *,
 	(productprice::real / 1000000) as productprice_clean,
-	(productrevenue::real / 1000000) as productrevenue_clean
+	(productrevenue::real / 1000000) as productrevenue_clean,
     (transactionrevenue::real / 1000000) as transactionrevenue_clean
 	FROM allsessions
 )

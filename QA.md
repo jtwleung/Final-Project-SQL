@@ -79,24 +79,303 @@ where s.productsku NOT IN (select distinct sku from products)
 
 ### B. QA-related after data-cleaning, to ensure data-cleaning did not inadvertently destroy or distort data.
 
-Checking Item #13 from cleaning_data.md:
+#### Related to creating allsessions_clean:
+
+Ran the following SQL to create a new view "allsessions_clean" incorporating my cleaning steps for allsessions:
 ```SQL
---Expect to see "[null]" in the first column, and the original long outlier pagetitle in the second column from the below after data-cleaning:
-WITH tempresultset as (
-	SELECT *,
+CREATE OR REPLACE VIEW allsessions_clean AS (
+	SELECT
+	fullvisitorid,
+	channelgrouping,
+	time,
+	country,
+	city,
+	totaltransactionrevenue,
+	transactions,
+	timeonsite,
+	pageviews,
+	sessionqualitydim,
+	date,
+	visitid,
+	type,
+	productrefundamount,
+	productquantity,
+	(productprice::real / 1000000) AS productprice,
+	productprice AS productprice_original,  -- NEW COLUMN
+	(productrevenue::real / 1000000) as productrevenue,
+	productrevenue as productrevenue_original,  -- NEW COLUMN
+	productsku,
+	v2productname,
+	v2productcategory,
+	productvariant,
+	currencycode,
+	itemquantity,
+	itemrevenue,
+    (transactionrevenue::real / 1000000) as transactionrevenue,
+	transactionrevenue as transactionrevenue_original,  -- NEW COLUMN
+	transactionid,
 	CASE
 		WHEN pagetitle LIKE '%weixin://private/setresult/SCENE_FETCHQUEUE&eyJmdW5jIjoibG9nIiwicGFyYW1zIjp7Im1zZyI6Il9ydW5PbjNyZEFwaUxpc3QgOiBtZW51OnNoYXJlOnRpbWVsaW5lLG1lbnU6c2hhcmU6YXBwbWVzc2FnZSxvblZvaWNlUmVjb3JkRW5kLG9uVm9pY2VQbGF5QmVnaW4sb25Wb2ljZVBsYXlFbmQsb25Mb2NhbEltYWdlVXBsb2FkUHJvZ3Jlc3Msb25JbWFnZURvd25sb2FkUHJvZ3Jlc3Msb25Wb2ljZVVwbG9hZFByb2dyZXNzLG9uVm9pY2VEb3dubG9hZFByb2dyZXNzLG1lbnU6c2V0Zm9udCxtZW51OnNoYXJlOndlaWJvLG1lbnU6c2hhcmU6ZW1haWwsd3hkb3dubG9hZDpzdGF0ZV9jaGFuZ2UsaGRPbkRldmljZVN0YXRlQ2hhbmdlZCxhY3Rpdml0eTpzdGF0ZV9jaGFuZ2UifSwiX19tc2dfdHlwZSI6ImNhbGwiLCJfX2NhbGxiYWNrX2lkIjoiMTAwMCJ9%'
 	 THEN NULL
 		ELSE pagetitle
-	END AS pagetitle_clean
+	END AS pagetitle,
+	pagetitle AS pagetitle_original,  -- NEW COLUMN
+	searchkeyword,
+	pagepathlevel1,
+	ecommerceactiontype,
+	ecommerceactionstep,
+	ecommerceactionoption
 	FROM allsessions
 )
-SELECT pagetitle_clean, pagetitle
-FROM tempresultset
-WHERE pagetitle LIKE '%weixin%'
 ```
 
+Ran the following SQL for QA on the new allsessions_clean view:
+```SQL
+-- 1. Confirm that the productprice is just productprice_original divided by 1,000,000 for all rows that productprice_original isn't 0 (in which case they should be equal, and both 0)
+-- The below should give NULL SET:
+SELECT productprice, productprice_original
+FROM allsessions_clean
+WHERE (productprice_original != 0 AND productprice::real != (productprice_original::real/1000000)::real) OR
+(productprice_original = 0 AND productprice != productprice_original AND productprice = 0)
+
+--2. Confirm that the producerevenue is just productrevenue_original divided by 1,000,000 for all rows that productrevenue_original IS NOT NULL (in which case, they should be equal, and both NULL)
+-- The below should give NULL SET:
+SELECT productrevenue, productrevenue_original
+FROM allsessions_clean
+WHERE (productrevenue_original IS NOT NULL AND productrevenue::real != (productrevenue_original::real/1000000)::real) OR
+(productrevenue_original IS NULL AND productrevenue IS NOT NULL)
+
+--3. Confirm that pagetitle_original is always equal to pagetitle except when pagetitle_original contains 'weixin', pagetitle is NULL:
+-- The below should give NULL SET:
+SELECT pagetitle, pagetitle_original
+FROM allsessions_clean
+WHERE (pagetitle_original LIKE '%weixin%' AND pagetitle IS NOT NULL) OR
+(pagetitle != pagetitle_original)
+
+--4. Confirm same number/name of columns in allsessions_clean as allsessions
+-- The following should return ONLY the 4 "new" columns in the allsessions_clean VIEW:  productprice_original, productrevenue_original, transactionrevenue_original, pagetitle_original
+WITH original_columns AS (
+	SELECT column_name
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'allsessions'
+),
+
+new_columns AS (
+	SELECT column_name
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'allsessions_clean'
+)
+
+SELECT *
+FROM original_columns oc
+FULL OUTER JOIN new_columns nc
+ON oc.column_name = nc.column_name
+WHERE oc.column_name IS NULL OR nc.column_name IS NULL
+
+
+--5. Confirm the same order of columns from allsessions and allsessions_clean
+-- The below should return NULL SET
+WITH original_columns AS (
+	SELECT ordinal_position, column_name,
+	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'allsessions'
+),
+
+new_columns AS (
+	SELECT ordinal_position, column_name,
+	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
+	FROM information_schema.columns
+	WHERE table_schema = 'public' and column_name NOT IN ('productprice_original', 'productrevenue_original', 'transactionrevenue_original', 'pagetitle_original')
+	AND table_name = 'allsessions_clean'
+)
+
+SELECT *
+FROM original_columns oc
+FULL OUTER JOIN new_columns nc
+ON oc.column_name = nc.column_name
+WHERE oc.row_num != nc.row_num
+```
+
+
+#### Related to creating analytics_clean:
+
+Ran the following SQL for QA on the new analytics_clean view:
+```SQL
+CREATE OR REPLACE VIEW analytics_clean AS (
+	SELECT
+	visitnumber,
+	visitid,
+	visitstarttime,
+	date,
+	fullvisitorid,
+	userid,
+	channelgrouping,
+	socialengagementtype,
+	unitssold,
+	pageviews,
+	timeonsite,
+	bounces,
+	(revenue::real / 1000000) AS revenue,
+	revenue AS revenue_original, --NEW COLUMN
+	(unit_price::real / 1000000) as unit_price,
+	unit_price AS unit_price_original --NEW COLUMN
+	FROM analytics
+)
+```
+
+Ran the following SQL for QA on the new analytics_clean view:
+
+```SQL
+--1. Confirm that the revenue is just the revenue_original divided by 1,000,000, but where revenue_original was NULL, revenue should be NULL, and where revenue_original was 0, revenue should be 0
+-- The below should give NULL SET:
+SELECT revenue, revenue_original
+FROM analytics_clean
+WHERE (revenue IS NOT NULL AND revenue != 0 AND revenue::real != (revenue_original::real/1000000)::real) OR
+(revenue_original = 0 AND revenue != revenue_original AND revenue = 0)
+
+--2. Confirm that the unit_price is just the unit_price_original divided by 1,000,000, but where unit_price_original was NULL, unit_price should be NULL, and where unit_price_original was 0, unit_price should be 0
+-- The below should give NULL SET:
+SELECT unit_price, unit_price_original
+FROM analytics_clean
+WHERE (unit_price IS NOT NULL AND unit_price != 0 AND unit_price::real != (unit_price_original::real/1000000)::real) OR
+(unit_price_original = 0 AND unit_price != unit_price_original AND unit_price = 0)
+
+--3. Confirm same number/name of columns in analytics_clean as analytics
+-- The following should return ONLY the 2 "new" columns in the analytics_clean VIEW:  revenue_original, unit_price_original
+WITH original_columns AS (
+	SELECT column_name
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'analytics'
+),
+
+new_columns AS (
+	SELECT column_name
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'analytics_clean'
+)
+
+SELECT *
+FROM original_columns oc
+FULL OUTER JOIN new_columns nc
+ON oc.column_name = nc.column_name
+WHERE oc.column_name IS NULL OR nc.column_name IS NULL
+
+--4. Confirm the same order of columns from analytics and analytics_clean
+-- The below should return NULL SET
+WITH original_columns AS (
+	SELECT ordinal_position, column_name,
+	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'analytics'
+),
+
+new_columns AS (
+	SELECT ordinal_position, column_name,
+	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
+	FROM information_schema.columns
+	WHERE table_schema = 'public' and column_name NOT IN ('revenue_original', 'unit_price_original')
+	AND table_name = 'analytics_clean'
+)
+
+SELECT *
+FROM original_columns oc
+FULL OUTER JOIN new_columns nc
+ON oc.column_name = nc.column_name
+WHERE oc.row_num != nc.row_num
+```
+
+#### Related to creating products_clean:
+
+Ran the following SQL for QA on the new products_clean view:
+```SQL
+CREATE OR REPLACE VIEW products_clean AS (
+	SELECT
+	sku,
+    TRIM(BOTH ' ' FROM name) AS name,
+	name AS name_original, -- NEW COLUMN
+	orderedquantity,
+	stocklevel,
+	restockingleadtime,
+	sentimentscore,
+	sentimentmagnitude
+    FROM products
+)
+```
+
+Ran the following SQL for QA on the new products_clean view:
+
+```SQL
+--1. Confirm that the name is just the TRIM (leading and trailing whitespace) of name_original
+-- THe below should give NULL SET:
+SELECT name, name_original
+FROM products_clean
+WHERE (name != TRIM(BOTH ' ' FROM name_original))
+
+--2. Confirm same number/name of columns as products
+-- The following should return ONLY the 1 "new" column in the products_clean VIEW:  name_original
+WITH original_columns AS (
+	SELECT column_name
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'products'
+),
+
+new_columns AS (
+	SELECT column_name
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'products_clean'
+)
+
+SELECT *
+FROM original_columns oc
+FULL OUTER JOIN new_columns nc
+ON oc.column_name = nc.column_name
+WHERE oc.column_name IS NULL OR nc.column_name IS NULL
+
+--3. Confirm the same order of columns from products and productss_clean
+-- The below should return NULL SET
+WITH original_columns AS (
+	SELECT ordinal_position, column_name,
+	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
+	FROM information_schema.columns
+	WHERE table_schema = 'public'
+	AND table_name = 'products'
+),
+
+new_columns AS (
+	SELECT ordinal_position, column_name,
+	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
+	FROM information_schema.columns
+	WHERE table_schema = 'public' and column_name NOT IN ('name_original')
+	AND table_name = 'products_clean'
+)
+
+SELECT *
+FROM original_columns oc
+FULL OUTER JOIN new_columns nc
+ON oc.column_name = nc.column_name
+WHERE oc.row_num != nc.row_num
+```
+
+
+
+
+#### No changes were needed on the salesbysku table.
+
+
+
+
+
+
+
 POSSIBLE ADDS:
-1. Confirm revenue_cleaned * 1000000 = revenue for every row for the 2 tables/4 columns that had scaling down done
-2. Confirm dropped columns on 2 tables using information_schema.columns names against a hard-coded list
 3. Confirm row count for salesbysku after dropping, is 8 skus less
+4. Reverse the order of the top EDA section, put it at the bottom after the QA on the data-cleaning
