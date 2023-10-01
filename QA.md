@@ -95,3 +95,8 @@ SELECT pagetitle_clean, pagetitle
 FROM tempresultset
 WHERE pagetitle LIKE '%weixin%'
 ```
+
+POSSIBLE ADDS:
+1. Confirm revenue_cleaned * 1000000 = revenue for every row for the 2 tables/4 columns that had scaling down done
+2. Confirm dropped columns on 2 tables using information_schema.columns names against a hard-coded list
+3. Confirm row count for salesbysku after dropping, is 8 skus less
