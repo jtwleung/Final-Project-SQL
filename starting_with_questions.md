@@ -3,25 +3,15 @@ Answer the following questions and provide the SQL queries used to find the answ
     
 **Question 1: Which cities and countries have the highest level of transaction revenues on the site?**
 
+Assumptions:
+1. The allsessions_clean table has information about all sessions begun on our ecommerce site, regardless of whether or not the consumer made a purchase (perhaps they were just browsing), and this is the only table with city and country information.
+2. The analytics_clean table is the only table that has a recording of how many units were sold in a given session (signified by visitid).
+3. The analytics_clean.unit_price is the unit price of what was sold.  Therefore the analytics_clean.unitssold * analytics_clean.unit_price is the total revenue for that particular visitid.
+4. Then we can LEFT JOIN the analytics_clean table with the allsessions_clean table USING visitid.  This will give us City and Country information from allsessions_clean where there is a matching visitid, otherwise there will be NULL columns from allsessions_clean, but we still preserve the sales revenue from analytics_clean table and can treat that as an "Unknown" city/country.
+5. We can use the resulting LEFT JOIN to do some aggregations to see revenue per city/country, keeping in mind that not all cities are going to be filled in from allsessions_clean.
 
 SQL Queries:
 ```SQL
---**Question 1: Which cities and countries have the highest level of transaction revenues on the site?**
--- Assumptions:
--- 1. The allsessions_clean table has information about all sessions begun on our ecommerce site, regardless of whether or not the consumer made a purchase
---    (perhaps they were just browsing), and this is the only table with city and country information.
--- 2. The analytics_clean table is the only table that has a recording of how many units were sold in a given session
---    (signified by visitid)
--- 3. The analytics_clean.unit_price is the unit price of what was sold.  Therefore the analytics_clean.unitssold * analytics_clean.unit_price
---    is the total revenue for that particular visitid
--- 4. Then we can LEFT JOIN the analytics_clean table with the allsessions_clean table USING visitid.  This will give
---    us City and Country information from allsessions_clean where there is a matching visitid, otherwise there will
---    be NULL columns from allsessions_clean, but we still preserve the sales revenue from analytics_clean table and can
---    treat that as an "Unknown" city/country.
--- 5. We can use the resulting LEFT JOIN to do some aggregations to see revenue per city/country, keeping in mind that
---    not all cities are filled in from allsessions_clean.
-
-
 WITH analytics_rows_with_sold AS (
 	SELECT *
 	FROM analytics_clean
@@ -34,12 +24,13 @@ joined_sold_revenue AS (
 	FROM analytics_rows_with_sold arws
 	LEFT JOIN allsessions_clean allsc
 	ON arws.visitid = allsc.visitid
-)
-,
+),
+
 city_country_revenue AS (
 	SELECT city, country, visit_revenue
 	FROM joined_sold_revenue
 ),
+
 location_revenue AS (
 	SELECT
 	CASE
@@ -49,8 +40,8 @@ location_revenue AS (
 	END AS location,
 	visit_revenue AS revenue
 	FROM city_country_revenue
-)
-,
+),
+
 location_grouped_revenue AS (
 	SELECT location,
 	SUM(revenue) AS location_total_revenue
