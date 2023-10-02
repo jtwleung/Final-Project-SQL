@@ -10,78 +10,15 @@ Describe your QA process and include the SQL queries used to execute it.
 
 ## My QA Process was in two parts:
 
-### A. EDA-related QA to confirm relationships between tables and keys, to be confident in joining tables.
-
-1. Confirming that products.sku and salesbysku.productsku are indeed the same keys.
-
-Here is a sample of some SQL used to determine that at least 454 product.skus overlap/are listed in the 462 distinct rows of salesbysku, so the product.sku and salesbysku.productsku are likely the same key.  Please see my file "Prelim_Exploration_ecommerce.sql" in my GitHub project for more questions answered from SQL.
-```SQL
---Q: How many of the 1092 products.sku are in the 462 salesbysku.productsku?  A: 454
---Q: Does 454 + 638 (products never sold) = 1092?  A: YES
-SELECT count(*)
-FROM products
-WHERE sku IN (SELECT DISTINCT productsku FROM salesbysku)
-
---Q: Are there any skus in products that aren't in sales?  A: YES - 638 products (and distinct products) that have never been sold (barring checking the allsessions table)
-SELECT *
-FROM products p
-WHERE p.sku NOT IN (SELECT DISTINCT productsku FROM salesbysku)
-
-SELECT DISTINCT sku FROM products p
-WHERE p.sku NOT IN (SELECT DISTINCT productsku FROM salesbysku)
-
-```
-
-2. Confirming that it would be fair to treat 'sku' as a PK in the products table, and 'productsku' as the PK in the salesbysku table:
-```SQL
-/*---For salesbysku table---*/
---how many distinct productsku rows?  462
-select productsku, count(*) from salesbysku
-group by productsku
-
---how many rows total?  Should be 462 if there are no NULL productskus.  YES, 462 total rows
-select count(*) from salesbysku
-
---how many distinct productskus in salesbysku?  462 from 462 rows
-select count(distinct productsku)
-from salesbysku
-
---462 rows and 462 distinct productskus, which means each productsku is only represented once in this table
-select distinct productsku from salesbysku
-
---any null productskus?  NO
-select * from salesbysku
-where productsku IS NULL or productsku = ''
-
-/*---For products table---*/
---how many rows?  1092
-select count(*) from products
-
---how many distinct skus in products table?  1092 - that means each row is unique
-select distinct sku from products
-select count(distinct sku) from products
-
---how many skus?  1092. This means no skus are null
-select count(sku) from products
-
---any null skus?  NO
-select * from products
-where sku IS NULL or sku = ''
-
-```
-
-3. Confirming that there is missing data in products for 8 rows in salesbysku, so these rows may be a candidate for cleaning since they are missing any information about the product:
-```SQL
---are there any productskus in salesbysku that aren't in products?  YES - 8 productskus of 462 distinct
-select * from salesbysku s
-where s.productsku NOT IN (select distinct sku from products)
-```
-
-### B. QA-related after data-cleaning, to ensure data-cleaning did not inadvertently destroy or distort data.
+### PART A. QA-related after data-cleaning, to ensure data-cleaning did not inadvertently destroy or distort data.
 
 #### Related to creating allsessions_clean:
 
-Ran the following SQL to create a new view "allsessions_clean" incorporating my cleaning steps for allsessions:
+Ran the following SQL to create a new view "allsessions_clean" incorporating my cleaning steps for allsessions.
+
+\*** **Note to reader**: I decided to put the clean data back in the original column name, and the former data into a new column name with the "_original" appended.  (e.g. cleaned productquantity goes into column "productquantity" and the former value goes into column "productquantity_original").  This is a slightly different approach than I indicated in the individual steps listed in cleaning_data.md because it was easier to run my SQL queries this way.  I left the original suggestions in cleaning_data.md to show that I know there are different approaches that can be taken.
+
+
 ```SQL
 CREATE OR REPLACE VIEW allsessions_clean AS (
 	SELECT
@@ -105,7 +42,8 @@ CREATE OR REPLACE VIEW allsessions_clean AS (
 	(productrevenue::real / 1000000) as productrevenue,
 	productrevenue as productrevenue_original,  -- NEW COLUMN
 	productsku,
-	v2productname,
+    REGEXP_REPLACE(v2productname, '(Google|YouTube|Waze|Android)( |$)', '', 'g') AS v2productname,
+	v2productname AS v2productname_original,
 	v2productcategory,
 	productvariant,
 	currencycode,
@@ -121,7 +59,12 @@ CREATE OR REPLACE VIEW allsessions_clean AS (
 	END AS pagetitle,
 	pagetitle AS pagetitle_original,  -- NEW COLUMN
 	searchkeyword,
-	pagepathlevel1,
+    CASE
+        WHEN pagepathlevel1 = '/asearch.html/' THEN '/asearch.html'
+		WHEN pagepathlevel1 = '/store.html/' THEN '/store.html'
+		ELSE pagepathlevel1
+	END AS pagepathlevel1,
+    pagepathlevel1 AS pagepathlevel1_original,
 	ecommerceactiontype,
 	ecommerceactionstep,
 	ecommerceactionoption
@@ -153,7 +96,7 @@ WHERE (pagetitle_original LIKE '%weixin%' AND pagetitle IS NOT NULL) OR
 (pagetitle != pagetitle_original)
 
 --4. Confirm same number/name of columns in allsessions_clean as allsessions
--- The following should return ONLY the 4 "new" columns in the allsessions_clean VIEW:  productprice_original, productrevenue_original, transactionrevenue_original, pagetitle_original
+-- The following should return ONLY the 6 "new" columns in the allsessions_clean VIEW:  productprice_original, productrevenue_original, transactionrevenue_original, pagetitle_original, pagepathlevel1_original, v2productname_original
 WITH original_columns AS (
 	SELECT column_name
 	FROM information_schema.columns
@@ -189,7 +132,7 @@ new_columns AS (
 	SELECT ordinal_position, column_name,
 	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
 	FROM information_schema.columns
-	WHERE table_schema = 'public' and column_name NOT IN ('productprice_original', 'productrevenue_original', 'transactionrevenue_original', 'pagetitle_original')
+	WHERE table_schema = 'public' and column_name NOT IN ('productprice_original', 'productrevenue_original', 'transactionrevenue_original', 'pagetitle_original', 'pagepathlevel1', 'v2productname_original')
 	AND table_name = 'allsessions_clean'
 )
 
@@ -372,10 +315,70 @@ WHERE oc.row_num != nc.row_num OR oc.column_name != nc.column_name
 
 
 
+### PART B. EDA-related QA to confirm relationships between tables and keys, to be confident in joining tables.
 
+1. Confirming that products.sku and salesbysku.productsku are indeed the same keys.
 
+Here is a sample of some SQL used to determine that at least 454 product.skus overlap/are listed in the 462 distinct rows of salesbysku, so the product.sku and salesbysku.productsku are likely the same key.  Please see my file "Prelim_Exploration_ecommerce.sql" in my GitHub project for more questions answered from SQL.
+```SQL
+--Q: How many of the 1092 products.sku are in the 462 salesbysku.productsku?  A: 454
+--Q: Does 454 + 638 (products never sold) = 1092?  A: YES
+SELECT count(*)
+FROM products
+WHERE sku IN (SELECT DISTINCT productsku FROM salesbysku)
 
+--Q: Are there any skus in products that aren't in sales?  A: YES - 638 products (and distinct products) that have never been sold (barring checking the allsessions table)
+SELECT *
+FROM products p
+WHERE p.sku NOT IN (SELECT DISTINCT productsku FROM salesbysku)
 
-POSSIBLE ADDS:
-3. Confirm row count for salesbysku after dropping, is 8 skus less
-4. Reverse the order of the top EDA section, put it at the bottom after the QA on the data-cleaning
+SELECT DISTINCT sku FROM products p
+WHERE p.sku NOT IN (SELECT DISTINCT productsku FROM salesbysku)
+
+```
+
+2. Confirming that it would be fair to treat 'sku' as a PK in the products table, and 'productsku' as the PK in the salesbysku table.  Please note that similar analysis was done (but I have not included the SQL given that it makes this report too long) for other potential PK/FKs such as, but not limited to: visitid between analytics and allsessions, productsku between allsessions and salesbysku/products, allsessions.v2productname and products.name.
+```SQL
+/*---For salesbysku table---*/
+--How many distinct productsku rows?  462
+SELECT productsku, COUNT(*)
+FROM salesbysku
+GROUP BY productsku
+
+--How many rows total?  Should be 462 if there are no NULL productskus.  YES, 462 total rows
+SELECT COUNT(*) FROM salesbysku
+
+--How many distinct productskus in salesbysku?  462 from 462 rows
+SELECT COUNT(DISTINCT productsku)
+FROM salesbysku
+
+--462 rows and 462 distinct productskus, which means each productsku is only represented once in this table
+SELECT DISTINCT productsku FROM salesbysku
+
+--Any null productskus?  A: NO
+SELECT * FROM salesbysku
+WHERE productsku IS NULL OR productsku = ''
+
+/*---For products table---*/
+--How many rows?  A: 1092
+SELECT COUNT(*) FROM products
+
+--How many distinct skus in products table?  A: 1092 - that means each row is unique
+SELECT DISTINCT sku FROM products
+SELECT COUNT(DISTINCT sku) FROM products
+
+--How many skus?  A: 1092. This means no skus are null
+SELECT COUNT(sku) FROM products
+
+--Any null skus?  A: NO
+SELECT * FROM products
+WHERE sku IS NULL OR sku = ''
+
+```
+
+3. Confirming that there is missing data in products for 8 rows in salesbysku, so these rows may be a candidate for cleaning since they are missing any information about the product:
+```SQL
+--Are there any productskus in salesbysku that aren't in products?  A: YES - 8 productskus of 462 distinct
+SELECT * FROM salesbysku s
+WHERE s.productsku NOT IN (SELECT DISTINCT sku FROM products)
+```

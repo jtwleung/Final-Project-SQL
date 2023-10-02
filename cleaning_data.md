@@ -9,7 +9,7 @@
 | Item # | Table Name | Column Name | Issue and Comments |
 | ------ | ---------- | ----------- | ------------------ |
 | 1 |allsessions | country | - 24 entries of '(not set)' = 0.15% occurence<br>- small percentage is negligible, so rows could be dropped if country distribution specifically is being examined, otherwise keep this column<br>- not possible to interpolate country value from city value due to missing city value data in those rows |
-| 2 | | city | - '(not set)' value occuring 2.69% percent of time<br>- 'not available in demo dataset' occuring 63.11% of the time<br>- 66% of the dataset does not have city information, suggest <b><font color="red">caution</font></b> if using this column in analysis as it may not provide comprehensive view |
+| 2 | | city | - '(not set)' value occuring 2.69% percent of time<br>- 'not available in demo dataset' occuring 63.11% of the time<br>- 66% of the dataset does not have city information, suggest <b><font color="red">caution</font></b> if using this column in analysis as it may not provide comprehensive view<br>- please see my cautionary notes within the starting_with_questions Q1 for some reasons/rationale why I did not clean this data |
 | 3 | | transactions | - NULL 99.46% of the rows, and value of 1 in 0.54% of the rows<br>- suggests this column is not useful and should be <b><font color="green">removed</font></b> |
 | 4 | | productrefundamount | - entire column empty, suggest <b><font color="green">remove column</font></b> in cleaned table |
 | 5 | | productquantity | - entire column empty, suggest <b><font color="green">remove column</font></b> in cleaned table | 
@@ -21,19 +21,21 @@
 | 11 | | productrevenue | - largest (non-null) number is 176,400,000 and smallest (non-null) is 58,656,666<br>- probably should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 to make it relative to productprice |
 | 12 | | transactionrevenue | - largest (non-null) number is 1,015,480,000 and smallest (non-null) is 169,970,000<br>- 99.97% are NULL, and only 4 unique numeric entries exist so use in large-scale analysis is limited<br>- this data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 to make it relative to productprice and productrevenue |
 | 13 | | pagetitle | - there is one entry for this column which appears to be an outlier which begins with "weixin://private/setresult/SCENE_FETCHQUEUE&"<br>- suggest <b><font color="yellow">setting this value to "NULL" as it is irrelevant data</font></b> in a clean data set<br>- if  |
-| 13a | | v2productcategory | - depending on analysis scenario, may be useful to parse the '/'-delimited categories and subcategories into additional related tables instead of a long string like "Home/Apparentl/Women's/Women's T-Shirts/"
-| 15 | analytics | userid | - all rows are "NULL", suggest <b><font color="green">remove column</font></b> in cleaned table |
-| 16 | | unitssold | - 97.8% of these entries are NULL, suggest <b><font color="red">caution</font></b> if using this column in analysis as it may not provide comprehensive view |
-| 17 | | revenue | - very large numbers (largest is 6,252,750,000, smallest is 1,123,333)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
-| 18 | | unit_price | - very large numbers (largest is 995,000,000, second smallest is 790,000)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
-| 19 | products | name | - <b><font color="yellow">remove leading and trailing whitespace</font></b> from name, for consistency in data presentation and matches if joining products.name with allsessions.v2productname |
+| 14 | | v2productcategory | - depending on analysis scenario, may be useful to parse the '/'-delimited categories and subcategories into additional related tables instead of a long string like "Home/Apparentl/Women's/Women's T-Shirts/" |
+| 15 | | v2productname | - there appear to be several social media brand names like "Google", "YouTube", "Waze" and "Android" which have corrupted this name and should be removed using a REGEXP_REPLACE command
+| 16 | analytics | userid | - all rows are "NULL", suggest <b><font color="green">remove column</font></b> in cleaned table |
+| 17 | | unitssold | - 97.8% of these entries are NULL, suggest <b><font color="red">caution</font></b> if using this column in analysis as it may not provide comprehensive view |
+| 18 | | revenue | - very large numbers (largest is 6,252,750,000, smallest is 1,123,333)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
+| 19 | | unit_price | - very large numbers (largest is 995,000,000, second smallest is 790,000)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
+| 20 | | pagepathlevel1 | - there are duplicate categories in these values that should be collapsed into a singular<br>- example 1: "/asearch.html" and "/asearch.html/" (set all to "/asearch.html")<br>- example 2: "/store.html" and "/store.html/ (set all to "/store.html")<br>- I also question whether the prevalent entry "/google+redesign/" (14318 rows) is corrupt data. This value could be set to NULL, but I will leave it as is
+| 21 | products | name | - <b><font color="yellow">remove leading and trailing whitespace</font></b> from name, for consistency in data presentation and matches if joining products.name with allsessions.v2productname |
 
 
 ### When doing preliminary EDA to understand the 4 tables I imported, and attempting to confirm the relationships between the tables and their columns, I found these additional issues:
 
 | Item # | Table Name | Column Name | Issue and Comments |
 | ------ | ---------- | ----------- | ------------------ |
-| 20 | salesbysku | productsku | - there are 8 productsku values in this table for whom no information exists in the products table.  There is a data integrity issue, which should be rectified by speaking to the business or data source to obtain product information for the missing productsku values.<br>- the rows associated to these missing productsku values, in salesbysku table, could be removed; however, an inner join as is typically used in analysis between salesbysku and products tables will automatically remove these rows, so it may not be necessary to physically remove these rows in a cleaned table |
+| 22 | salesbysku | productsku | - there are 8 productsku values in this table for whom no information exists in the products table.  There is a data integrity issue, which should be rectified by speaking to the business or data source to obtain product information for the missing productsku values.<br>- the rows associated to these missing productsku values, in salesbysku table, could be removed; however, an inner join as is typically used in analysis between salesbysku and products tables will automatically remove these rows, so it may not be necessary to physically remove these rows in a cleaned table |
 
 
 # Queries:
@@ -43,7 +45,7 @@
 
 Note:  I did not action all the items identified above (as indicated in the table above, some were highlighted simply as areas to exercise "<b><font color="red">caution</font></b>" over when running analyses).  However, below are the queries used to address the items from table above which were deemed issues to be addressed by data cleaning.
 
-\*** Please note that the complete SQL used to create views for allsessions_clean, analytics_clean and products_clean, are listed at the beginning of the QA.md file.  The below is simply individualized SQL for each Item in the table above:
+\*** **Note to reader**:  Please note that the complete SQL used to create views for allsessions_clean, analytics_clean and products_clean, are **listed at the beginning of the QA.md file**.  Ultimately, I decided to approach the creation of the clean tables slightly differently than written below.  For example, I created views instead of temp tables, and put the clean data back in the original column name, and the former data into a new column name with the "_original" appended.  (e.g. cleaned productquantity goes into column "productquantity" and the former value goes into column "productquantity_original").  This is a slightly different approach than I indicated in the individual steps listed below because it was easier to run my SQL queries this way.  I left the original individual steps in this file this way (as suggested by Brian Lynch) to show that I know there are different approaches that can be taken to organizing cleaned data.  The below is simply individualized SQL to address each Item highlighted in the table above.
 
 **Item #1**:
 ```SQL
@@ -90,6 +92,15 @@ CREATE TEMP TABLE allsessions_clean AS (
 
 **Item #15**:
 ```SQL
+CREATE TEMP TABLE allsessions_clean AS (
+    SELECT *,
+    REGEXP_REPLACE(v2productname, '(Google|YouTube|Waze|Android)( |$)', '', 'g') AS v2productname_clean
+    FROM allsessions        
+)
+```
+
+**Item #16**:
+```SQL
 -- Create analytics_clean from selecting all columns EXCEPT:  [userid]
 -- This may be unnecessary because we could just NOT use the above columns in any of our analysis SQL instead of creating a whole new temp table without these columns.
 
@@ -99,7 +110,7 @@ CREATE TEMP TABLE analytics_clean AS (
 )
 ```
 
-**Item #17, #18**:
+**Item #18, #19**:
 ```SQL
 CREATE TEMP TABLE analytics_clean AS (
 	SELECT *,
@@ -109,7 +120,20 @@ CREATE TEMP TABLE analytics_clean AS (
 )
 ```
 
-**Item #19**:
+**Item #20**:
+```SQL
+CREATE TEMP TABLE allsessions_clean AS (
+	SELECT *,
+	CASE
+		WHEN pagepathlevel1 = '/asearch.html/' THEN '/asearch.html'
+		WHEN pagepathlevel1 = '/store.html/' THEN '/store.html'
+		ELSE pagepathlevel1
+	END AS pagepathlevel1_clean
+FROM allsessions
+)
+```
+
+**Item #21**:
 ```SQL
 CREATE TEMP TABLE products_clean AS (
 	SELECT *,
@@ -118,7 +142,7 @@ CREATE TEMP TABLE products_clean AS (
 )
 ```
 
-**Item #20**:
+**Item #22**:
 ```SQL
 -- Discuss with the business to obtain information for all columns in the products table, for the following salesbysku.productsku values which do not have a matching entry in the products table:
 SELECT DISTINCT productsku

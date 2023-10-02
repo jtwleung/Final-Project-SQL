@@ -1256,25 +1256,229 @@ Complete result set, with the ORDER BY using total_num_units_sold, is here:
 
 # Question 4: 
 
+What are our top 10 best-selling products by number of units sold?  Show the productsku, and the definitive name from the products table (not the v2 name captured from allsessions, because those names need to be vetted for accuracy).
+
+**Solution note**:  I am assuming that only the entries in the analytics table with unitssold > 0 are the visits that generated any sales.  This could be a mistaken assumption, but it seems the most reliable way to obtain actual sales numbers because each of those rows is tied to an actual visit to the ecommerce site, whereas the salesbysku.total_ordered and the products.orderequantity could be data unrelated to ecommerce sales.  My Option 1 solution is the one I think is most accurate, though I also present 2 other options to obtain similar data.  It is interesting to compare to see how the top 10 best-selling products "change" depending on the source of the data.  More interrogation of the data sources would be needed to determine which is the most accurate set of table(s) to use.
+
 ### SQL Queries:
+```SQL
+
+-- Option 1:  Most reliable (in my opinion) using data from analytics_clean table and INNER JOINING to all other tables:
+SELECT DISTINCT
+	allc.productsku,
+	p.name AS definitive_name_from_product_list,
+	SUM(ac.unitssold) OVER (PARTITION BY allc.productsku) AS total_units_sold
+FROM analytics_clean ac
+JOIN allsessions_clean allc
+ON ac.visitid = allc.visitid
+JOIN products_clean p
+ON allc.productsku = p.sku
+WHERE ac.unitssold IS NOT NULL OR ac.unitssold > 0
+ORDER BY total_units_sold DESC
+LIMIT 10
+
+
+-- Option 2:  Another view, from the salesbysku table, though it is not clear how these were ordered and how the total_ordered value was aggregated:
+SELECT
+	s.productsku,
+	CASE
+		WHEN p.name IS NOT NULL OR p.name != '' THEN p.name
+		ELSE 'Unknown'
+	END AS definitive_name,
+	s.total_ordered
+FROM salesbysku s
+LEFT JOIN products_clean p
+ON s.productsku = p.sku
+ORDER BY s.total_ordered DESC
+LIMIT 10
+
+-- Option 3:  Another view, from the products table only, though it is not clear how these were ordered and how the orderequantity value was aggregated:
+SELECT
+	name,
+	orderedquantity
+FROM products_clean
+ORDER BY orderedquantity DESC
+LIMIT 10
+```
 
 ## Answer:
+Using Option 1, which I think is the most reliable, the top 10 products best-selling products are as follows:
+| productsku     | definitive_name_from_product_list                 | total_units_sold |
+|----------------|---------------------------------------------------|------------------|
+| GGOEGBRJ037299 | Alpine Style Backpack                             | 227              |
+| GGOEGCBQ016499 | SPF-15 Slim & Slender Lip Balm                    | 168              |
+| GGOEGAAX0592   | Men's Airflow 1/4 Zip Pullover Black              | 56               |
+| GGOEGHPB071610 | Twill Cap                                         | 28               |
+| GGOENEBQ079199 | Protect Smoke + CO White Wired Alarm-USA          | 28               |
+| GGOENEBQ084699 | Learning Thermostat 3rd Gen-USA - White           | 27               |
+| GGOEGAAX0366   | Women's Scoop Neck Tee White                      | 23               |
+| GGOENEBJ079499 | Learning Thermostat 3rd Gen-USA - Stainless Steel | 21               |
+| 9182859        | Toddler Raglan Shirt Blue Heather/Navy            | 20               |
+| GGOENEBB078899 | Cam Indoor Security Camera - USA                  | 18               |
 
+
+Option 2 result set (from salesbysku, joined to products) is:
+| productsku     | definitive_name                           | total_ordered |
+|----------------|-------------------------------------------|---------------|
+| GGOEGOAQ012899 | Ballpoint LED Light Pen                   | 456           |
+| GGOEGDHC074099 | 17oz Stainless Steel Sport Bottle         | 334           |
+| GGOEGOCB017499 | Leatherette Journal                       | 319           |
+| GGOEGOCC077999 | Spiral Journal with Pen                   | 290           |
+| GGOEGFYQ016599 | Foam Can and Bottle Cooler                | 253           |
+| GGOEGOCB078299 | Leather Journal-Black                     | 250           |
+| GGOEGHPJ080310 | Blackout Cap                              | 189           |
+| GGOEADHH073999 | Android 17oz Stainless Steel Sport Bottle | 167           |
+| GGOEGAAX0037   | Sunglasses                                | 146           |
+| GGOENEBQ078999 | Cam Outdoor Security Camera - USA         | 112           |
+
+
+Option 3 result set (from products table only) is:
+| sku            | name                              | orderedquantity |
+|----------------|-----------------------------------|-----------------|
+| GGOEGFSR022099 | Kick Ball                         | 15170           |
+| GGOEGDHC018299 | 22 oz Water Bottle                | 10075           |
+| GGOEGAAX0074   | 22 oz Water Bottle                | 8942            |
+| GGOEGAAX0037   | Sunglasses                        | 4204            |
+| GGOEGOCC077999 | Spiral Journal with Pen           | 3896            |
+| GGOEYFKQ020699 | Custom Decals                     | 3786            |
+| GGOEGCBQ016499 | SPF-15 Slim & Slender Lip Balm    | 3682            |
+| GGOEGOLC013299 | Spiral Notebook and Pen Set       | 3582            |
+| GGOEGOCB017499 | Leatherette Journal               | 3071            |
+| GGOENEBQ078999 | Cam Outdoor Security Camera - USA | 2719            |
 
 
 # Question 5: 
 
+The marketing department wants to know if there is any obvious pattern evident from the analytics data, that shows if certain months or days that have higher than average visits to our ecommerce site.  They have asked for all visit data, not just visits that results in any sales.
+
 ### SQL Queries:
+```SQL
+WITH total_num_visits_by_date AS (
+	SELECT
+		COUNT(*) AS numvisits,
+		date
+	FROM analytics_clean GROUP BY DATE
+)
+,
+visits_on_day_and_avg_over_all_days AS (
+	SELECT
+		numvisits AS visits_on_this_day,
+		date,
+		AVG(numvisits) OVER () AS avg_visits_over_all_days
+FROM total_num_visits_by_date
+)
+
+SELECT
+	*, 
+	CASE
+	WHEN visits_on_this_day > avg_visits_over_all_days THEN 'ABOVE'
+ 	ELSE 'BELOW'
+END AS above_or_below_avg_num_visits
+FROM visits_on_day_and_avg_over_all_days
+ORDER BY above_or_below_avg_num_visits ASC, visits_on_this_day DESC, date ASC
+```
 
 ## Answer:
 
+It doesn't appear there is a very obvious pattern for when there are above average number of visits to the website versus when there are below average visits to the website.  The distribution (to just an 'eyeball' inspection, no statistics involved) of months and dates seem fairly balanced between the "above average number of visits" group vs. the "below average number of visits" group.
 
+It is important to note that this data, though there are over 4M rows, is limited to dates in the year 2017 and over just the months of May, June, and July.  So the data is quite limited to making large generalizations over times of the year (e.g. Christmas, Black Friday, New Year's Day, etc.).
 
+One interesting artifact from the result set is that the top 3 dates where number of visits was above average, are May 17, 18 and 24.  These days are around the May Long Weekend.  Perhaps, at least in 2017 in the spring/summer months, people were very motivated to look for new items to purchase on the May Long Weekend because typically May Long Weekend for a lot of Canadians, signifies the beginning of "summer" or warmer weather, and "camping/outdoor" season.
 
-
-
-DRAFT GARBAGE TO USE OR NOT:
-Presuming the following:
-- The **salesbysku** table shows products (by productsku) that have been ordered on the ecommerce site by customers, and are therefore expected by the customer to be fulfilled by our company.
-- The salesbysku.total_ordered column for each product shows a snapshot of the total number of each product that needs to be fulfilled at a given time, so it provides an accurate number of each product that we must be able to fulfill for our customers.
-- The **products** table shows information about each of our product SKUs, and that the products.orderedquantity signifies the number of products we have ordered into our warehouse and are on-hand to use to fulfill customer demands.  (Note that the products table also has stocklevel)
+The complete result set is here:
+| visits_on_this_day | date       | avg_visits_over_all_days | above_or_below_avg_num_visits |
+|--------------------|------------|--------------------------|-------------------------------|
+| 67481              | 2017-05-17 | 46248.62366              | ABOVE                         |
+| 66502              | 2017-05-18 | 46248.62366              | ABOVE                         |
+| 62492              | 2017-05-24 | 46248.62366              | ABOVE                         |
+| 61303              | 2017-07-18 | 46248.62366              | ABOVE                         |
+| 59681              | 2017-07-31 | 46248.62366              | ABOVE                         |
+| 59474              | 2017-07-17 | 46248.62366              | ABOVE                         |
+| 58293              | 2017-07-13 | 46248.62366              | ABOVE                         |
+| 58251              | 2017-07-26 | 46248.62366              | ABOVE                         |
+| 58191              | 2017-06-29 | 46248.62366              | ABOVE                         |
+| 57676              | 2017-07-21 | 46248.62366              | ABOVE                         |
+| 57180              | 2017-05-16 | 46248.62366              | ABOVE                         |
+| 56989              | 2017-08-01 | 46248.62366              | ABOVE                         |
+| 56968              | 2017-05-19 | 46248.62366              | ABOVE                         |
+| 56579              | 2017-07-19 | 46248.62366              | ABOVE                         |
+| 55970              | 2017-05-22 | 46248.62366              | ABOVE                         |
+| 55816              | 2017-07-07 | 46248.62366              | ABOVE                         |
+| 55488              | 2017-07-05 | 46248.62366              | ABOVE                         |
+| 55340              | 2017-07-10 | 46248.62366              | ABOVE                         |
+| 55175              | 2017-05-31 | 46248.62366              | ABOVE                         |
+| 55066              | 2017-06-01 | 46248.62366              | ABOVE                         |
+| 54995              | 2017-07-25 | 46248.62366              | ABOVE                         |
+| 54161              | 2017-06-27 | 46248.62366              | ABOVE                         |
+| 54124              | 2017-05-25 | 46248.62366              | ABOVE                         |
+| 54040              | 2017-07-12 | 46248.62366              | ABOVE                         |
+| 53893              | 2017-07-27 | 46248.62366              | ABOVE                         |
+| 53872              | 2017-06-28 | 46248.62366              | ABOVE                         |
+| 53717              | 2017-05-01 | 46248.62366              | ABOVE                         |
+| 53512              | 2017-07-20 | 46248.62366              | ABOVE                         |
+| 51939              | 2017-07-14 | 46248.62366              | ABOVE                         |
+| 51888              | 2017-06-12 | 46248.62366              | ABOVE                         |
+| 51534              | 2017-05-02 | 46248.62366              | ABOVE                         |
+| 51391              | 2017-07-24 | 46248.62366              | ABOVE                         |
+| 51347              | 2017-06-05 | 46248.62366              | ABOVE                         |
+| 51254              | 2017-06-30 | 46248.62366              | ABOVE                         |
+| 50553              | 2017-05-09 | 46248.62366              | ABOVE                         |
+| 50217              | 2017-06-06 | 46248.62366              | ABOVE                         |
+| 50208              | 2017-05-23 | 46248.62366              | ABOVE                         |
+| 50079              | 2017-06-26 | 46248.62366              | ABOVE                         |
+| 50037              | 2017-06-07 | 46248.62366              | ABOVE                         |
+| 49842              | 2017-06-13 | 46248.62366              | ABOVE                         |
+| 49262              | 2017-05-03 | 46248.62366              | ABOVE                         |
+| 49195              | 2017-07-11 | 46248.62366              | ABOVE                         |
+| 48827              | 2017-06-02 | 46248.62366              | ABOVE                         |
+| 48783              | 2017-07-28 | 46248.62366              | ABOVE                         |
+| 48750              | 2017-05-15 | 46248.62366              | ABOVE                         |
+| 48548              | 2017-05-04 | 46248.62366              | ABOVE                         |
+| 48537              | 2017-06-08 | 46248.62366              | ABOVE                         |
+| 48217              | 2017-07-06 | 46248.62366              | ABOVE                         |
+| 48170              | 2017-06-14 | 46248.62366              | ABOVE                         |
+| 46616              | 2017-05-11 | 46248.62366              | ABOVE                         |
+| 46552              | 2017-05-30 | 46248.62366              | ABOVE                         |
+| 46094              | 2017-05-12 | 46248.62366              | BELOW                         |
+| 44990              | 2017-05-08 | 46248.62366              | BELOW                         |
+| 44309              | 2017-05-10 | 46248.62366              | BELOW                         |
+| 44228              | 2017-05-26 | 46248.62366              | BELOW                         |
+| 43842              | 2017-06-09 | 46248.62366              | BELOW                         |
+| 42461              | 2017-06-22 | 46248.62366              | BELOW                         |
+| 42441              | 2017-06-19 | 46248.62366              | BELOW                         |
+| 41992              | 2017-06-20 | 46248.62366              | BELOW                         |
+| 41377              | 2017-05-21 | 46248.62366              | BELOW                         |
+| 41117              | 2017-06-15 | 46248.62366              | BELOW                         |
+| 41033              | 2017-06-21 | 46248.62366              | BELOW                         |
+| 40887              | 2017-05-05 | 46248.62366              | BELOW                         |
+| 40614              | 2017-07-30 | 46248.62366              | BELOW                         |
+| 40590              | 2017-06-16 | 46248.62366              | BELOW                         |
+| 39681              | 2017-06-23 | 46248.62366              | BELOW                         |
+| 39597              | 2017-05-20 | 46248.62366              | BELOW                         |
+| 39156              | 2017-07-03 | 46248.62366              | BELOW                         |
+| 38978              | 2017-07-01 | 46248.62366              | BELOW                         |
+| 38596              | 2017-07-23 | 46248.62366              | BELOW                         |
+| 38517              | 2017-07-16 | 46248.62366              | BELOW                         |
+| 38516              | 2017-07-09 | 46248.62366              | BELOW                         |
+| 37915              | 2017-07-15 | 46248.62366              | BELOW                         |
+| 37204              | 2017-07-22 | 46248.62366              | BELOW                         |
+| 36644              | 2017-07-29 | 46248.62366              | BELOW                         |
+| 36632              | 2017-06-04 | 46248.62366              | BELOW                         |
+| 36307              | 2017-07-08 | 46248.62366              | BELOW                         |
+| 35867              | 2017-06-11 | 46248.62366              | BELOW                         |
+| 34974              | 2017-07-04 | 46248.62366              | BELOW                         |
+| 34946              | 2017-05-29 | 46248.62366              | BELOW                         |
+| 34728              | 2017-07-02 | 46248.62366              | BELOW                         |
+| 33930              | 2017-06-25 | 46248.62366              | BELOW                         |
+| 33380              | 2017-05-14 | 46248.62366              | BELOW                         |
+| 33024              | 2017-05-28 | 46248.62366              | BELOW                         |
+| 31078              | 2017-06-24 | 46248.62366              | BELOW                         |
+| 30877              | 2017-06-10 | 46248.62366              | BELOW                         |
+| 30135              | 2017-06-18 | 46248.62366              | BELOW                         |
+| 29765              | 2017-05-06 | 46248.62366              | BELOW                         |
+| 29602              | 2017-06-03 | 46248.62366              | BELOW                         |
+| 28809              | 2017-05-13 | 46248.62366              | BELOW                         |
+| 28662              | 2017-05-07 | 46248.62366              | BELOW                         |
+| 27478              | 2017-05-27 | 46248.62366              | BELOW                         |
+| 26174              | 2017-06-17 | 46248.62366              | BELOW                         |
