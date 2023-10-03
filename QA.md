@@ -139,7 +139,7 @@ new_columns AS (
 	SELECT ordinal_position, column_name,
 	ROW_NUMBER() OVER (ORDER BY ordinal_position) AS row_num
 	FROM information_schema.columns
-	WHERE table_schema = 'public' and column_name NOT IN ('productprice_original', 'productrevenue_original', 'transactionrevenue_original', 'pagetitle_original', 'pagepathlevel1', 'v2productname_original')
+	WHERE table_schema = 'public' and column_name NOT IN ('productprice_original', 'productrevenue_original', 'transactionrevenue_original', 'pagetitle_original', 'pagepathlevel1', 'v2productname_original')  -- also remove the new columns I added, since we only want to confirm the order of the originally named columns is preserved
 	AND table_name = 'allsessions_clean'
 )
 

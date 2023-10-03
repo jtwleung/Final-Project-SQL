@@ -48,6 +48,28 @@ Analytics on this data can give us insights on things such as:
 4. Top 10 best selling products across all countries orders were placed in.
 5. Trends/patterns in site visits over certain periods of the year, and where data is lacking for that analysis.
 
+### Specifically, here are my conclusions:
+#### From the questions I as the Consultant asked (starting_with_data.md):
+1. We have an inventory problem.  Inventory and Procurement processes could benefit from process improvement and/or re-engineering to mitigate customer satisfaction impact, given the sheer number (15) of products with significant negative surplus values.
+2. Purchasing Department top priority should be procuring more of GGOEGFSR022099: “Kick Ball” from both: 1) absolute number owing, 2) number owing relative to number ordered.
+3. The 2 most effective marketing channels are “Referral” and “Direct”.  Channels are top by both total number of units sold and average price of units sold.  Continue with channel “development & feeding” approaches.
+4. “Affiliates” channel has lowest ranking on total units sold, but 3rd highest average price.  Possible quick win is to invest in “Affiliates” channel development.  Small adjustments targeted towards increasing volume sold could have disproportionate impact on overall remit of this channel.
+5. “Top 10 Products Sold” based on total units differs significantly when generating this data from different data sources (1) analytics (unitssold), 2) salesbysku (total_ordered) or 3) products (orderedquantity).
+- Indoor Security Camera in top 10 regardless of data source.  Indicates validity?
+- Wildly different result sets highlight degree of data inconsistency due to differing date ranges, and problems with referential integrity and data integrity.
+- Invites a revisit with cleaner data and additional investigation time.
+
+#### From the questions the Client asked (starting_with_questions.md):
+1.  Highest transaction revenue (driven by “unitssold” values from analytics) in “Unknown” location  shows extent of missing location data.
+2.  Top 9 highest transactions from US  possibilities for growth from other locations. potential relative saturation in US.
+3.  No obvious patterns apparent to “naked eye” for the below questions (result sets in report)  follow-on statistical or graphical analysis valuable; definite need for data integrity improvements (analytics.unitssold averages 1.xx causes switch to using quantities from allsessions, products, salesbysku):
+- Average number products ordered each city, country
+- Categories of products ordered from each city, country
+- Best-selling products per city, country
+- Effect of Revenue on “Impact” (using sentimentscores * sentimentmagnitudes * quantity)
+4.  “Revenue effect on Impact?”  value in obtaining true impact data such as dollars invested in community infrastructure, dollars invested in charity, employment statistics in countries in which we operate.
+
+
 ## Challenges 
 This project had several challenges:
 
@@ -61,7 +83,7 @@ This project had several challenges:
 
 If I had more time and tools, I would:
 
-1. Do further data cleaning after more EDA type interrogation of the data.
+1. Do further data cleaning after more EDA type interrogation of the data.  Include, for example, Outlier detection and removal in various parts of the entire dataset.
 2. Find a "business person" to interview to ask more questions about the way this data is sourced, the business domain, and to validate that the assumptions I have made about how the data connects, is accurate.
 3. Take some of my findings from the LHL questions and do statistical analysis looking for patterns and trends that are more subtle than stand out to the "naked eye".  This would also include doing graphical analysis (visualizations, histograms, etc.) of the results.
 4. Follow up with "the business" about the tentative conclusions I drew from the questions I posed to the data, in order to get feedback and see if further data analysis or further data procurement would help with developing further and stronger conclusions.

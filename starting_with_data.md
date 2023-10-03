@@ -1188,6 +1188,8 @@ The ranking of which products are most urgent to work on purchasing changes depe
 
 **In both cases, it looks like the Kick Ball is the very first priority that purchasing department employees should focus on purchasing.**
 
+One last finding is that it may be worthwhile for the inventory and procurement processes to be re-engineered and improved, given the number (15) of products with significant "negative surplus" situations and the potential impact to customer satisfaction if their orders are not fulfilled promptly.
+
 Complete result set is:
 | sku            | name                                       | orderedquantity | stocklevel | surplus_quantity | percentage_surplus | quantity_rank | percentage_rank |
 |----------------|--------------------------------------------|-----------------|------------|------------------|--------------------|---------------|-----------------|
@@ -1239,25 +1241,18 @@ The "Direct" channel is the next highest for both number of units sold **and** n
 
 An interesting finding is that the "Affiliates" channel, though lowest in the total number of units sold, has the 3rd highest average price.  It may be worthwhile to invest some additional marketing dollars into developing this channel because they end up causing higher price sales, so if we were able to increase the number of units selling through this channel, this might be an untapped area where we could more easily increase our profit.
 
-Complete result set, with the ORDER BY using total_num_units_sold, is here:
-| sku            | name                                       | orderedquantity | stocklevel | surplus_quantity | percentage_surplus | quantity_rank | percentage_rank |
-|----------------|--------------------------------------------|-----------------|------------|------------------|--------------------|---------------|-----------------|
-| GGOEGFSR022099 | Kick Ball                                  | 15170           | 723        | -14447           | -95.23401          | 1             | 1               |
-| GGOEGBJC019999 | Collapsible Shopping Bag                   | 1184            | 117        | -1067            | -90.11824          | 4             | 2               |
-| GGOEGOCT019199 | Red Spiral  Notebook                       | 316             | 43         | -273             | -86.3924           | 11            | 3               |
-| GGOEGGOA017399 | Maze Pen                                   | 1748            | 324        | -1424            | -81.46453          | 3             | 4               |
-| GGOEGOLC014299 | Metallic Notebook Set                      | 2718            | 610        | -2108            | -77.55703          | 2             | 5               |
-| GGOEGAWQ062948 | Baby Essentials Set                        | 261             | 77         | -184             | -70.498085         | 13            | 6               |
-| GGOEGDHQ015399 | 26 oz Double Wall Insulated Bottle         | 845             | 256        | -589             | -69.70414          | 7             | 7               |
-| GGOENEBQ079099 | Protect Smoke + CO White Battery Alarm-USA | 999             | 325        | -674             | -67.46747          | 6             | 8               |
-| GGOEGETR014599 | Tube Power Bank                            | 218             | 72         | -146             | -66.97247          | 14            | 9               |
-| GGOEGKAA019299 | Switch Tone Color Crayon Pen               | 1163            | 388        | -775             | -66.63801          | 5             | 10              |
-| GGOEGDHC015299 | 23 oz Wide Mouth Sport Bottle              | 402             | 142        | -260             | -64.67662          | 12            | 11              |
-| GGOEGFKA022299 | Keyboard DOT Sticker                       | 480             | 189        | -291             | -60.625            | 10            | 12              |
-| GGOEGHGT019599 | Sunglasses                                 | 887             | 376        | -511             | -57.60992          | 8             | 13              |
-| GGOEGHPB003410 | Snapback Hat Black                         | 230             | 105        | -125             | -54.347824         | 15            | 14              |
-| GGOEYOCR077399 | RFID Journal                               | 935             | 433        | -502             | -53.68984          | 9             | 15              |
+Complete result set, with the ORDER BY using total_num_units_sold (Scenario #1 in SQL above), is here:
 
+
+| channelgrouping | total_num_units_sold | avg_price_units_sold |
+|-----------------|----------------------|----------------------|
+| Referral        | 168372               | 73.53505             |
+| Direct          | 113171               | 40.90311             |
+| Organic Search  | 100049               | 23.3003              |
+| Paid Search     | 10569                | 25.99787             |
+| Social          | 10029                | 22.99695             |
+| Display         | 9768                 | 25.33975             |
+| Affiliates      | 2734                 | 34.27459             |
 
 # Question 4: 
 
