@@ -55,6 +55,7 @@ This project had several challenges:
 2. No "business" to ask questions about the data, the application, domain, context under which this data was gathered and how the data might be used to draw conclusions.  No ability to validate that the application of the analysis would be correct.
 3. Short time-frame under which to complete the project (done over 48 hours non-stop).
 4. Data quality is extremely poor; many null values, a lot of inconsistencies in data, corrupt data, numbers and sums do not add up or agree between tables.
+5. Not possible to add Primary Key-Foreign Key constraints due to data quality.  Please note that the ERD ("schema.png") has been drawn in such a way as to show potential relationships between tables even though they do not adhere to PK-FK relationships guaranteeing referential integrity. Please see the note on the "schema.png" diagram.
 
 ## Future Goals
 
