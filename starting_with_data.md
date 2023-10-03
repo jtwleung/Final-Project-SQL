@@ -5,6 +5,8 @@ Show the state of the stock level compared to the ordered quantity our company i
 
 ### SQL Queries:
 ```SQL
+-- Build result set with rank on purchasing urgency based on absolute value/size of the negative surplus quantity, using a window function
+
 SELECT	sku,
 		name,
 		orderedquantity,
@@ -1138,6 +1140,7 @@ The purchasing department wants to understand our inventory vs. ordered situatio
 
 ### SQL Queries:
 ```SQL
+-- Build initial result set that includes only out of stock products, first.
 WITH out_of_stock_products as(
 SELECT	sku,
 		name,
@@ -1147,8 +1150,10 @@ SELECT	sku,
 		(((stocklevel::real-orderedquantity::real)/orderedquantity::real) * 100)::real AS percentage_surplus
 FROM products_clean p
 WHERE orderedquantity > stocklevel
-),
+)
+,
 
+-- Apply 2 window functions to a apply ranking from 2 perspectives: absolute quantity understock vs. percentage understock relative to how much was ordered
 out_of_stock_products_both_rankings as (
 SELECT	*,
 		RANK() OVER (ORDER BY surplus_quantity ASC) AS quantity_rank,
@@ -1262,7 +1267,6 @@ What are our top 10 best-selling products by number of units sold?  Show the pro
 
 ### SQL Queries:
 ```SQL
-
 -- Option 1:  Most reliable (in my opinion) using data from analytics_clean table and INNER JOINING to all other tables:
 SELECT DISTINCT
 	allc.productsku,
@@ -1291,6 +1295,7 @@ LEFT JOIN products_clean p
 ON s.productsku = p.sku
 ORDER BY s.total_ordered DESC
 LIMIT 10
+
 
 -- Option 3:  Another view, from the products table only, though it is not clear how these were ordered and how the orderequantity value was aggregated:
 SELECT
@@ -1353,6 +1358,7 @@ The marketing department wants to know if there is any obvious pattern evident f
 
 ### SQL Queries:
 ```SQL
+-- Begin base result set with simple GROUP BY function to obtain count of number of visits per date.
 WITH total_num_visits_by_date AS (
 	SELECT
 		COUNT(*) AS numvisits,
@@ -1360,6 +1366,8 @@ WITH total_num_visits_by_date AS (
 	FROM analytics_clean GROUP BY DATE
 )
 ,
+
+-- Refine the initial result set and add calculation on average number of visits on each row, to facilitate the comparison on number of visits on a given day against total average, in the next result set.
 visits_on_day_and_avg_over_all_days AS (
 	SELECT
 		numvisits AS visits_on_this_day,
@@ -1368,6 +1376,7 @@ visits_on_day_and_avg_over_all_days AS (
 FROM total_num_visits_by_date
 )
 
+-- Create final result set which highlights whether a given date's number of total visits is above or below the average over all days.
 SELECT
 	*, 
 	CASE
