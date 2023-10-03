@@ -20,6 +20,8 @@ Ran the following SQL to create a new view "allsessions_clean" incorporating my 
 
 
 ```SQL
+-- Code to create a allsessions_clean view with the data cleaning steps all combined
+
 CREATE OR REPLACE VIEW allsessions_clean AS (
 	SELECT
 	fullvisitorid,
@@ -116,7 +118,7 @@ FROM original_columns oc
 FULL OUTER JOIN new_columns nc
 ON oc.column_name = nc.column_name
 WHERE oc.column_name IS NULL OR nc.column_name IS NULL
-
+AND oc.column_name NOT IN ('transactions', 'productrefundamount', 'productquantity', 'itemquantity', 'itemrevenue', 'searchkeyword')  -- also remove the columns I dropped in my cleaning
 
 --5. Confirm the same order of originally-present columns from allsessions and allsessions_clean
 -- The below should return NULL SET
@@ -126,6 +128,7 @@ WITH original_columns AS (
 	FROM information_schema.columns
 	WHERE table_schema = 'public'
 	AND table_name = 'allsessions'
+    AND column_name NOT IN ('transactions', 'productrefundamount', 'productquantity', 'itemquantity', 'itemrevenue', 'searchkeyword')  -- also remove the columns I dropped in my cleaning
 ),
 
 new_columns AS (
@@ -148,6 +151,8 @@ WHERE oc.row_num != nc.row_num OR oc.column_name != nc.column_name
 
 Ran the following SQL for QA on the new analytics_clean view:
 ```SQL
+-- Code to create a analytics_clean view with the data cleaning steps all combined
+
 CREATE OR REPLACE VIEW analytics_clean AS (
 	SELECT
 	visitnumber,
@@ -201,6 +206,7 @@ new_columns AS (
 	FROM information_schema.columns
 	WHERE table_schema = 'public'
 	AND table_name = 'analytics_clean'
+    AND column_name NOT IN ('userid')  -- also remove the column I dropped in my cleaning
 )
 
 SELECT *
@@ -217,6 +223,7 @@ WITH original_columns AS (
 	FROM information_schema.columns
 	WHERE table_schema = 'public'
 	AND table_name = 'analytics'
+    AND column_name NOT IN ('userid')  -- also remove the column I dropped in my cleaning
 ),
 
 new_columns AS (
@@ -238,6 +245,8 @@ WHERE oc.row_num != nc.row_num OR oc.column_name != nc.column_name
 
 Ran the following SQL for QA on the new products_clean view:
 ```SQL
+-- Code to create a products_clean view with the data cleaning steps all combined
+
 CREATE OR REPLACE VIEW products_clean AS (
 	SELECT
 	sku,

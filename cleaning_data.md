@@ -23,11 +23,11 @@
 | 13 | | pagetitle | - there is one entry for this column which appears to be an outlier which begins with "weixin://private/setresult/SCENE_FETCHQUEUE&"<br>- suggest <b><font color="yellow">setting this value to "NULL" as it is irrelevant data</font></b> in a clean data set<br>- if  |
 | 14 | | v2productcategory | - depending on analysis scenario, may be useful to parse the '/'-delimited categories and subcategories into additional related tables instead of a long string like "Home/Apparentl/Women's/Women's T-Shirts/" |
 | 15 | | v2productname | - there appear to be several social media brand names like "Google", "YouTube", "Waze" and "Android" which have corrupted this name and should be removed using a REGEXP_REPLACE command
-| 16 | analytics | userid | - all rows are "NULL", suggest <b><font color="green">remove column</font></b> in cleaned table |
-| 17 | | unitssold | - 97.8% of these entries are NULL, suggest <b><font color="red">caution</font></b> if using this column in analysis as it may not provide comprehensive view |
-| 18 | | revenue | - very large numbers (largest is 6,252,750,000, smallest is 1,123,333)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
-| 19 | | unit_price | - very large numbers (largest is 995,000,000, second smallest is 790,000)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
-| 20 | | pagepathlevel1 | - there are duplicate categories in these values that should be collapsed into a singular<br>- example 1: "/asearch.html" and "/asearch.html/" (set all to "/asearch.html")<br>- example 2: "/store.html" and "/store.html/ (set all to "/store.html")<br>- I also question whether the prevalent entry "/google+redesign/" (14318 rows) is corrupt data. This value could be set to NULL, but I will leave it as is
+| 15a | | pagepathlevel1 | - there are duplicate categories in these values that should be collapsed into a singular<br>- example 1: "/asearch.html" and "/asearch.html/" (set all to "/asearch.html")<br>- example 2: "/store.html" and "/store.html/ (set all to "/store.html")<br>- I also question whether the prevalent entry "/google+redesign/" (14318 rows) is corrupt data. This value could be set to NULL, but I will leave it as is
+| 17 | analytics | userid | - all rows are "NULL", suggest <b><font color="green">remove column</font></b> in cleaned table |
+| 18 | | unitssold | - 97.8% of these entries are NULL, suggest <b><font color="red">caution</font></b> if using this column in analysis as it may not provide comprehensive view |
+| 19 | | revenue | - very large numbers (largest is 6,252,750,000, smallest is 1,123,333)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
+| 20 | | unit_price | - very large numbers (largest is 995,000,000, second smallest is 790,000)<br>- data should be <b><font color="yellow">standardized/scaled down</font></b> with division by 1,000,000 |
 | 21 | products | name | - <b><font color="yellow">remove leading and trailing whitespace</font></b> from name, for consistency in data presentation and matches if joining products.name with allsessions.v2productname |
 
 
@@ -45,10 +45,15 @@
 
 Note:  I did not action all the items identified above (as indicated in the table above, some were highlighted simply as areas to exercise "<b><font color="red">caution</font></b>" over when running analyses).  However, below are the queries used to address the items from table above which were deemed issues to be addressed by data cleaning.
 
-\*** **Note to reader**:  Please note that the complete SQL used to create views for allsessions_clean, analytics_clean and products_clean, are **listed at the beginning of the QA.md file**.  Ultimately, I decided to approach the creation of the clean tables slightly differently than written below.  For example, I created views instead of temp tables, and put the clean data back in the original column name, and the former data into a new column name with the "_original" appended.  (e.g. cleaned productquantity goes into column "productquantity" and the former value goes into column "productquantity_original").  This is a slightly different approach than I indicated in the individual steps listed below because it was easier to run my SQL queries this way.  I left the original individual steps in this file this way (as suggested by Brian Lynch) to show that I know there are different approaches that can be taken to organizing cleaned data.  The below is simply individualized SQL to address each Item highlighted in the table above.
+\*** **Note to reader**:  Please note that the complete SQL used to create views for allsessions_clean, analytics_clean and products_clean, are **listed at the beginning of the QA.md file**.  Ultimately, I decided to approach the creation of the clean tables slightly differently than written below, after my initial analysis written in this file on a column by column basis.
+
+For example, I created views instead of temp tables, and put the clean data back in the original column name, and the former data into a new column name with the "_original" appended.  (e.g. cleaned productquantity goes into column "productquantity" and the former value goes into column "productquantity_original").  This is a slightly different approach than I indicated in the individual steps listed below because once I began working with the data for analysis, I realized it was easier to run my analytical SQL queries with the original column names.  I left the original individual steps in this cleaning_data.md file as written below because breaking everything into individual steps was suggested by Brian Lynch, and in order to show that I know there are different approaches that can be taken to organizing cleaned data.  The below is simply individualized SQL to address each Item highlighted in the table above so the reader can follow along easily with my commentary in the table above, and one way to formulate the SQL to perform the cleaning, below.
+
 
 **Item #1**:
 ```SQL
+-- Create a new clean temporary table that does not have any rows where the country value is '(not set)'.
+
 CREATE TEMP TABLE allsessions_clean AS
 SELECT *
 FROM allsessions
@@ -68,6 +73,10 @@ CREATE TEMP TABLE allsessions_clean AS (
 
 **Item #10, #11, #12**:
 ```SQL
+-- Create allsessions_clean temp table with all columns 'as is'.
+-- 3 new columns are created for each of: productprice, productrevenue, and transactionrevenue.
+-- The transformation is that all 3 columns will be divided by 1,000,000 and the result stored as a newly added columns productprice_clean, producerevenue_clean, transactionrevenue_clean, respectively
+
 CREATE TEMP TABLE allsessions_clean AS (
 	SELECT *,
 	(productprice::real / 1000000) as productprice_clean,
@@ -79,6 +88,9 @@ CREATE TEMP TABLE allsessions_clean AS (
 
 **Item #13**:
 ```SQL
+-- Create allsessions_clean temp table with all columns, with the exception of the 'pagetitle' column, 'as is'.
+-- For the pagetitle column, for the 1 value with what appears to a data corruption of data that does not belong, replace that with "NULL".
+
 CREATE TEMP TABLE allsessions_clean AS (
 	SELECT *,
 	CASE
@@ -92,6 +104,9 @@ CREATE TEMP TABLE allsessions_clean AS (
 
 **Item #15**:
 ```SQL
+-- Create allsessions_clean temp table with all columns 'as is'.
+-- Add an additional column, v2productname_clean, which is a cleaned version of v2productname where any occurence of the words 'Google', 'YouTube', 'Waze' or 'Android' are removed.
+
 CREATE TEMP TABLE allsessions_clean AS (
     SELECT *,
     REGEXP_REPLACE(v2productname, '(Google|YouTube|Waze|Android)( |$)', '', 'g') AS v2productname_clean
@@ -101,27 +116,10 @@ CREATE TEMP TABLE allsessions_clean AS (
 
 **Item #16**:
 ```SQL
--- Create analytics_clean from selecting all columns EXCEPT:  [userid]
--- This may be unnecessary because we could just NOT use the above columns in any of our analysis SQL instead of creating a whole new temp table without these columns.
+-- Create allsessions_clean temp table with all columns 'as is'.
+-- Add an additional column, pagepathlevel1_clean, which is a cleaned version of pagepathlevel1 where any occurence of the value '/asearch.html/' is replaced with '/asearch.html' and any occurence of the value '/store.html/' is replaced with '/store.html'.  This creates consistency in the format of the values and also de-duplicates values.
 
-CREATE TEMP TABLE analytics_clean AS (
-    SELECT visitnumber, visitid, visitstarttime, date, fullvisitorid, channelgrouping, socialengagementtype, unitssold, pageviews, timeonsite, bounces, revenue, unit_price
-    FROM analytics
-)
-```
 
-**Item #18, #19**:
-```SQL
-CREATE TEMP TABLE analytics_clean AS (
-	SELECT *,
-	(revenue::real / 1000000) as revenue_clean,
-	(unit_price::real / 1000000) as unit_price_clean
-	FROM analytics
-)
-```
-
-**Item #20**:
-```SQL
 CREATE TEMP TABLE allsessions_clean AS (
 	SELECT *,
 	CASE
@@ -133,8 +131,36 @@ FROM allsessions
 )
 ```
 
+**Item #17**:
+```SQL
+-- Create analytics_clean from selecting all columns EXCEPT:  [userid]
+-- This may be unnecessary because we could just NOT use the above columns in any of our analysis SQL instead of creating a whole new temp table without these columns.
+
+CREATE TEMP TABLE analytics_clean AS (
+    SELECT visitnumber, visitid, visitstarttime, date, fullvisitorid, channelgrouping, socialengagementtype, unitssold, pageviews, timeonsite, bounces, revenue, unit_price
+    FROM analytics
+)
+```
+
+**Item #19, #20**:
+```SQL
+-- Create analytics_clean temp table with all columns 'as is'.
+-- 2 new columns are created for each of: revenue, unit_price.
+-- The transformation is that both columns will be divided by 1,000,000 and the result stored as a newly added columns revenue_clean, unit_price_clean, respectively.
+
+CREATE TEMP TABLE analytics_clean AS (
+	SELECT *,
+	(revenue::real / 1000000) as revenue_clean,
+	(unit_price::real / 1000000) as unit_price_clean
+	FROM analytics
+)
+```
+
 **Item #21**:
 ```SQL
+-- Create products_clean temp table with all columns 'as is'.
+-- 1 new column called name_clean is created, in which leading and trailing whitespace is removed from the product name.
+
 CREATE TEMP TABLE products_clean AS (
 	SELECT *,
     TRIM(BOTH ' ' FROM name) AS name_clean
@@ -145,6 +171,7 @@ CREATE TEMP TABLE products_clean AS (
 **Item #22**:
 ```SQL
 -- Discuss with the business to obtain information for all columns in the products table, for the following salesbysku.productsku values which do not have a matching entry in the products table:
+
 SELECT DISTINCT productsku
 FROM salesbysku s
 WHERE s.productsku NOT IN (SELECT DISTINCT sku FROM products)
