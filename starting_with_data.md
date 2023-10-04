@@ -1231,6 +1231,24 @@ FROM analytics_clean
 WHERE unitssold IS NOT NULL OR unitssold > 0
 ORDER BY avg_price_units_sold DESC
 
+-- Overall Scenario: Adding RANKs against total_num_units_sold and avg_price_units_sold:
+WITH channel_avgnumunits_avgpriceunits AS (
+	SELECT DISTINCT	channelgrouping,
+					SUM(unitssold) OVER (PARTITION BY channelgrouping) AS total_num_units_sold,
+					AVG(unit_price) OVER (PARTITION BY channelgrouping) AS avg_price_units_sold
+	FROM analytics_clean
+	WHERE unitssold IS NOT NULL OR unitssold > 0
+)
+
+SELECT
+	channelgrouping,
+	total_num_units_sold,
+	avg_price_units_sold,
+	RANK() OVER (ORDER BY total_num_units_sold DESC) rank_by_num_units,
+	RANK() OVER (ORDER BY avg_price_units_sold DESC) rank_by_avg_units
+FROM channel_avgnumunits_avgpriceunits
+ORDER BY rank_by_num_units ASC
+
 ```
 
 ## Answer:
@@ -1241,18 +1259,18 @@ The "Direct" channel is the next highest for both number of units sold **and** n
 
 An interesting finding is that the "Affiliates" channel, though lowest in the total number of units sold, has the 3rd highest average price.  It may be worthwhile to invest some additional marketing dollars into developing this channel because they end up causing higher price sales, so if we were able to increase the number of units selling through this channel, this might be an untapped area where we could more easily increase our profit.
 
-Complete result set, with the ORDER BY using total_num_units_sold (Scenario #1 in SQL above), is here:
+Complete result set, with the use of ranking by both total_num_units_sold and avg_price_units_sold ("Overall Scenario" in SQL above), is here:
 
 
-| channelgrouping | total_num_units_sold | avg_price_units_sold |
-|-----------------|----------------------|----------------------|
-| Referral        | 168372               | 73.53505             |
-| Direct          | 113171               | 40.90311             |
-| Organic Search  | 100049               | 23.3003              |
-| Paid Search     | 10569                | 25.99787             |
-| Social          | 10029                | 22.99695             |
-| Display         | 9768                 | 25.33975             |
-| Affiliates      | 2734                 | 34.27459             |
+| channelgrouping | total_num_units_sold | avg_price_units_sold | rank_by_num_units | rank_by_avg_units |
+|-----------------|----------------------|----------------------|-------------------|-------------------|
+| Referral        | 168372               | 73.53505             | 1                 | 1                 |
+| Direct          | 113171               | 40.90311             | 2                 | 2                 |
+| Organic Search  | 100049               | 23.3003              | 3                 | 6                 |
+| Paid Search     | 10569                | 25.99787             | 4                 | 4                 |
+| Social          | 10029                | 22.99695             | 5                 | 7                 |
+| Display         | 9768                 | 25.33975             | 6                 | 5                 |
+| Affiliates      | 2734                 | 34.27459             | 7                 | 3                 |
 
 # Question 4: 
 
